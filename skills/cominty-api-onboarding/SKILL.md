@@ -170,14 +170,22 @@ console.log(await reply.text())
   `disabledTools` turns tools off: `'web'`, `'company_documents'`,
   `'mcp:<server>'`, `'mcp:*'`. Leave a field out to mean "everything the
   agent has". An empty `source_ids` means "no source", not "all of them".
+- **A long task can stop and ask to continue.** The tool rounds for one
+  message are capped: at 60 by default today. At the cap the agent recaps
+  and asks whether to go on, and the message still ends as `success`.
+  Send a follow-up to continue. `maxSteps` sets the cap, per message.
+- **No memory across threads unless you ask.** Start the thread with
+  `memoryNamespace`, a name you choose, or it has no memory beyond itself
+  and nothing says so. The name is shared by the whole organization. Both
+  options are in [references/quickstart.md](references/quickstart.md).
 
 ## Reference
 
 | File | For |
 |---|---|
-| [references/quickstart.md](references/quickstart.md) | First call, streaming and follow-up in all three stacks |
+| [references/quickstart.md](references/quickstart.md) | First call, streaming, follow-up, `max_steps` and memory in all three stacks |
 | [references/streaming.md](references/streaming.md) | The JSON Lines contract. Required reading for a hand-written client |
-| [references/endpoints.md](references/endpoints.md) | The HTTP surface: threads, messages, agents, files |
+| [references/endpoints.md](references/endpoints.md) | The HTTP surface: threads, messages, memory files, agents, files |
 | [references/troubleshooting.md](references/troubleshooting.md) | Symptom to cause, for the failures people hit first |
 
 Related skills, when they are installed: `cominty-add-agent-to-app`,

@@ -239,6 +239,9 @@ In the UI:
 - When `done` has questions, show each `prompt` with its `options`. The
   choice goes back as the next message, with the same thread id.
 - When `done` has a status other than `success`, say the run failed.
+- A `done` whose text is a recap that asks whether to continue is a
+  normal answer: the agent reached its cap on tool rounds. Show it, and
+  let the person reply with the same thread id.
 
 ## Notes
 

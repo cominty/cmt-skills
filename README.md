@@ -45,9 +45,9 @@ install them for your user instead.
 | Skill | Use it when |
 |---|---|
 | [`cominty-api-onboarding`](skills/cominty-api-onboarding/SKILL.md) | You have an account and want your code to get a first answer back: the key, the user id, the SDK, the first call, streaming, follow-ups. |
-| [`cominty-add-agent-to-app`](skills/cominty-add-agent-to-app/SKILL.md) | You want a Cominty agent inside a project that already exists, with the API key kept on the server. |
+| [`cominty-add-agent-to-app`](skills/cominty-add-agent-to-app/SKILL.md) | You want a Cominty agent inside a project that already exists, with the API key kept on the server. Also for giving that agent a memory, or a cap on its work per message. |
 | [`cominty-streaming`](skills/cominty-streaming/SKILL.md) | You are writing your own reader for the run stream, or debugging one. |
-| [`cominty-troubleshooting`](skills/cominty-troubleshooting/SKILL.md) | Something fails: a 401, a 429, a stream that never ends, no answer. |
+| [`cominty-troubleshooting`](skills/cominty-troubleshooting/SKILL.md) | Something fails: a 401, a 429, a stream that never ends, no answer, an agent that stops half way or does not remember. |
 | [`cominty-console`](skills/cominty-console/SKILL.md) | You need to know where something is in the developer console. |
 | [`cominty-ideas`](skills/cominty-ideas/SKILL.md) | You want to know what an agent could do in your project. |
 
@@ -130,7 +130,10 @@ The public skills were written from the TypeScript SDK
 ([`@cominty-ai/sdk`](https://github.com/cominty/js-sdk), 0.1.0), the Python
 SDK ([`cominty-sdk`](https://github.com/cominty/python-sdk), 0.4.0), the
 documentation and API reference at https://docs.cominty.ai, and the team's
-earlier onboarding notes. When the API or an SDK changes,
+earlier onboarding notes. `max_steps` and memory namespaces were added
+from the Python SDK 0.5.0 and the API reference. Their TypeScript names
+are the ones planned for the release after 0.1.0: check them against that
+release when it is out. When the API or an SDK changes,
 update the skills in the same change.
 
 ## License

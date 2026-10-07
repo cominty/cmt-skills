@@ -99,7 +99,7 @@ whose `status` is `"failed"` and whose `content` is empty. It can happen
 at any point, even after a `result`.
 
 Check `status` on the terminal message. Then check `error_code`:
-`"budget_exhausted"` means the workspace's budget ran out during the run.
+`"budget_exhausted"` means the workspace's budget ran out.
 Say that plainly instead of reporting a generic failure.
 
 ---

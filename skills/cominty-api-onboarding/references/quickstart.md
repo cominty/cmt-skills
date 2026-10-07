@@ -121,6 +121,56 @@ if (questions.length > 0) {
 }
 ```
 
+### Cap the work, keep a memory
+
+Two options. Neither is in `@cominty-ai/sdk` 0.1.0: they come in the
+release after it. Check with `npm ls @cominty-ai/sdk`. On 0.1.0,
+TypeScript rejects them and plain JavaScript drops them without an error,
+so send them over plain HTTP, as in the last part of this file, until
+the project can upgrade.
+
+```ts
+const run = await client.chat.start({
+    agentId,
+    message: 'Research X, then write it up.',
+    maxSteps: 5, // at most about 5 tool rounds for this message
+    memoryNamespace: 'brand-voice', // the thread's memory, for its whole life
+})
+console.log(await run.text())
+
+// The cap is per message: send it again. The namespace is not sent again.
+const reply = await client.chat.send(run.thread.id, {
+    agentId,
+    message: 'Yes, continue.',
+    maxSteps: 5,
+})
+```
+
+- At the cap the agent stops, recaps and asks whether to continue. The
+  message still ends as `success`, and nothing marks it. Do not parse the
+  text. Answer with a follow-up.
+- `maxSteps` left out means the server default: 60 today.
+- With no `memoryNamespace`, and none on the agent, the thread has no
+  memory at all, and nothing says so.
+- A namespace is shared by the whole organization. For one memory per end
+  user, put the user's id in the name: `support-bot-<user id>`.
+
+The memory files themselves:
+
+```ts
+const namespace = 'brand-voice'
+
+await client.memory.create({ path: 'tone.md', namespace, purpose: 'writing style', content: 'Keep it casual.' })
+await client.memory.list({ namespace }) // summaries, no content
+await client.memory.listNamespaces() // string[]
+
+const file = await client.memory.get('tone.md', { namespace })
+await client.memory.update('tone.md', { namespace, version: file.version, content: 'Keep it upbeat.' })
+await client.memory.delete('tone.md', { namespace })
+```
+
+The rules for both are in [endpoints.md](endpoints.md).
+
 ### Threads
 
 ```ts
@@ -146,6 +196,8 @@ await client.threads.archive(threadId) // a soft delete
 | `sourceIds` | `number[]` | Restrict retrieval to these knowledge sources. |
 | `documentIds` | `string[]` | Restrict retrieval to these documents. |
 | `disabledTools` | `DisablableTool[]` | `'web'`, `'company_documents'`, `'mcp:<server>'`, `'mcp:*'`. |
+| `maxSteps` | `number` | A cap on tool rounds for this message. An integer of 1 or more. Not in 0.1.0. |
+| `memoryNamespace` | `string` | `start` only. The thread's memory namespace, at most 128 characters. Not in 0.1.0. |
 | `signal` | `AbortSignal` | Cancels the request and the run's stream. |
 
 Bad values throw `InvalidParams` before any request is sent. It names every
@@ -240,6 +292,58 @@ if questions:
     print(await reply.text())
 ```
 
+### Cap the work, keep a memory
+
+Two options, both from `cominty-sdk` 0.5.0. `pip show cominty-sdk` gives
+the installed version.
+
+```python
+run = await client.chat.start(
+    agent_id=AGENT_ID,
+    message="Research X, then write it up.",
+    max_steps=5,                     # at most about 5 tool rounds for this message
+    memory_namespace="brand-voice",  # the thread's memory, for its whole life
+)
+print(await run.text())
+
+# The cap is per message: send it again. The namespace is not sent again.
+reply = await client.chat.send(
+    run.thread.id,
+    agent_id=AGENT_ID,
+    message="Yes, continue.",
+    max_steps=5,
+)
+```
+
+- At the cap the agent stops, recaps and asks whether to continue. The
+  message still ends as `success`, and nothing marks it. Do not parse the
+  text. Answer with a follow-up.
+- `max_steps` left out means the server default: 60 today. `None` is not
+  "no cap": it raises `InvalidParams`, like anything that is not an
+  integer of 1 or more.
+- `chat.send` has no `memory_namespace` argument. Passing one is a
+  `TypeError`.
+- With no `memory_namespace`, and none on the agent, the thread has no
+  memory at all, and nothing says so.
+- A namespace is shared by the whole organization. For one memory per end
+  user, put the user's id in the name: `support-bot-<user id>`.
+
+The memory files themselves:
+
+```python
+namespace = "brand-voice"
+
+await client.memory.create(path="tone.md", namespace=namespace, purpose="writing style", content="Keep it casual.")
+await client.memory.list(namespace=namespace)   # summaries, no content
+await client.memory.list_namespaces()           # a list of str
+
+file = await client.memory.get("tone.md", namespace=namespace)
+await client.memory.update("tone.md", namespace=namespace, version=file.version, content="Keep it upbeat.")
+await client.memory.delete("tone.md", namespace=namespace)
+```
+
+The rules for both are in [endpoints.md](endpoints.md).
+
 ### Threads
 
 ```python
@@ -262,8 +366,9 @@ await client.threads.archive(thread_id)         # a soft delete
 | `timeout` | none | `60` seconds. It also bounds each wait for data on a stream. |
 
 `chat.start` and `chat.send` take `agent_id`, `message`, `file_ids`,
-`source_ids`, `document_ids` and `disabled_tools`. `start` also takes
-`name`. Bad values raise `InvalidParams` before any request is sent.
+`source_ids`, `document_ids`, `disabled_tools` and `max_steps`. `start`
+also takes `name` and `memory_namespace`. Bad values raise `InvalidParams`
+before any request is sent.
 
 ---
 
@@ -354,6 +459,32 @@ curl -sS -G "$BASE/chat" \
 ```
 
 Free-text search repeats the key, one per term: `terms=a&terms=b`.
+
+### Cap the work, keep a memory
+
+Both go in `options`, next to `agent_id`. This works today.
+
+```json
+{
+  "message": { "content": "Research X, then write it up." },
+  "options": {
+    "agent_id": "__cominty_agents::agent.chat",
+    "user_id": "user_...",
+    "max_steps": 5,
+    "memory_namespace": "brand-voice"
+  }
+}
+```
+
+- `max_steps` goes on `POST /chat` and on `POST /chat/{thread_id}`, and
+  counts for that one message. Send it on every message that needs it.
+- `memory_namespace` goes on `POST /chat` only. A value sent on a
+  follow-up is ignored.
+- At the cap the agent stops, recaps and asks whether to continue. The
+  terminal message still has `status` `success`. Do not parse the text.
+
+The memory file calls, and the rules for both options, are in
+[endpoints.md](endpoints.md).
 
 ### Scoping the run
 

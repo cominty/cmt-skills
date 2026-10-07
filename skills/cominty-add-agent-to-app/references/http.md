@@ -20,7 +20,7 @@ configuration. Never from the request, never from the client.
 
 `POST /chat` starts a new thread. `POST /chat/{thread_id}` continues one.
 The SDKs send the same body to both, except that only `POST /chat` takes
-a `name`.
+a `name` and `options.memory_namespace`.
 
 ```bash
 BASE="${COMINTY_BASE_URL:-https://ds.cominty.com}"
@@ -56,6 +56,10 @@ follow-ups, and for the ownership check before any later read.
 `message` can also carry `file_ids` (at most 5), `source_ids`,
 `document_ids` and `disabled_tools`. Leave them out when you do not need
 them. `content` is at most 30,000 characters.
+
+`options` can also carry `max_steps`, and on `POST /chat` only,
+`memory_namespace`: see [Capping tool rounds](#capping-tool-rounds) and
+[Memory](#memory).
 
 ## 2. Read the stream until the terminal message
 
@@ -134,11 +138,11 @@ An error response is JSON with a `detail` field.
 
 | Status | Meaning | What to do |
 |---|---|---|
-| `400` | A bad request. A missing `user_id` is one cause: it is required with an API key. | Send `options.user_id` |
+| `400` | A bad request. A missing `user_id` is one cause: it is required with an API key. On a memory file call, a missing `namespace`. | Send `options.user_id`, or the `namespace` |
 | `401` | The key is missing, mistyped or revoked, or it was sent as a bearer token | Send it in `x-cominty-token` |
 | `403` | The key is valid but may not access this resource | Check the id |
-| `404` | Wrong thread, message or agent id | Check the id |
-| `409` | The request conflicts with the resource's current state | Read `detail` |
+| `404` | Wrong thread, message or agent id. Or a memory file that is not at that path in that namespace. | Check the id |
+| `409` | The request conflicts with the resource's current state. On a memory file: the path exists already, or the `version` is stale. | Read `detail` |
 | `422` | The body failed validation. `detail` is a list that names each field. | Fix the body |
 | `429` | A limit was hit. See below. | Depends on which |
 | `5xx` | A problem on Cominty's side | Retry with backoff. Mind the note on sends. |
@@ -155,6 +159,119 @@ A `429` is one of these:
 Sends are not idempotent. If a `POST` times out or the connection breaks,
 the message may still have been accepted. Resending it can start a second
 run and bill twice. Look at the thread before you resend.
+
+## Capping tool rounds
+
+`options.max_steps`, next to `agent_id`, caps how many tool rounds the
+agent runs for that one message. Both `POST /chat` and
+`POST /chat/{thread_id}` take it.
+
+```bash
+curl -sS "$BASE/chat" \
+  -H "x-cominty-token: $COMINTY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": { "content": "Research X, then write it up." },
+    "options": {
+      "agent_id": "__cominty_agents::agent.chat",
+      "user_id": "'"$COMINTY_USER_ID"'",
+      "max_steps": 5
+    }
+  }' > thread.json
+```
+
+- A JSON integer of 1 or more. `null`, a value below 1, a float or a
+  string is a `422`, and nothing is created. There is no "unlimited" and
+  no upper bound.
+- Left out, the server default applies: 60 today, and it may change.
+- It is per message. A follow-up without it runs with the server default
+  again. Send it on every message that needs it.
+- Reaching it is not an error. The agent stops, recaps and asks whether to
+  continue. The terminal message has `status` `success` and `error_code`
+  null. No field or event marks it, and the wording is the model's, so do
+  not parse it. Continue with an ordinary follow-up, as in step 3.
+- It is an order of magnitude: the agent can run `max_steps + 1` rounds,
+  one round can hold several tool calls, and each sub-agent counts its
+  own. It does not limit tokens, cost or time.
+- Do not set a very large cap on an expensive model. The budget is checked
+  once, when the agent starts, and the cost is deducted at the end.
+
+## Memory
+
+`options.memory_namespace`, on `POST /chat` only, attaches the new thread
+to a memory namespace for its whole life. Read [memory.md](memory.md)
+before you choose the name: it is shared by the whole organization.
+
+```bash
+curl -sS "$BASE/chat" \
+  -H "x-cominty-token: $COMINTY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": { "content": "Hi" },
+    "options": {
+      "agent_id": "__cominty_agents::agent.chat",
+      "user_id": "'"$COMINTY_USER_ID"'",
+      "memory_namespace": "brand-voice"
+    }
+  }' > thread.json
+```
+
+`POST /chat/{thread_id}` has no such field. A value sent there is ignored,
+with no error. Responses do not echo the namespace: store it with the
+thread id.
+
+The memory files. No `user_id` goes on these calls.
+
+```bash
+# Create: everything in the body. Answers 201 and the file.
+curl -sS "$BASE/memory" \
+  -H "x-cominty-token: $COMINTY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "path": "tone.md",
+    "namespace": "brand-voice",
+    "purpose": "writing style",
+    "content": "Keep it casual."
+  }'
+
+# List one namespace's files. Summaries: no content.
+curl -sS -G "$BASE/memory" \
+  -H "x-cominty-token: $COMINTY_API_KEY" \
+  --data-urlencode "namespace=brand-voice"
+
+# List the namespaces that hold at least one file.
+curl -sS "$BASE/memory/namespaces" \
+  -H "x-cominty-token: $COMINTY_API_KEY"
+
+# Read: path and namespace in the query.
+curl -sS -G "$BASE/memory/file" \
+  -H "x-cominty-token: $COMINTY_API_KEY" \
+  --data-urlencode "path=tone.md" \
+  --data-urlencode "namespace=brand-voice" > file.json
+
+# Update: path, namespace and version in the query, the change in the body.
+VERSION=$(jq -r '.version | @uri' file.json)
+curl -sS -X PUT "$BASE/memory/file?path=tone.md&namespace=brand-voice&version=$VERSION" \
+  -H "x-cominty-token: $COMINTY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "content": "Keep it upbeat." }'
+
+# Delete: answers 204, with no body.
+curl -sS -G -X DELETE "$BASE/memory/file" \
+  -H "x-cominty-token: $COMINTY_API_KEY" \
+  --data-urlencode "path=tone.md" \
+  --data-urlencode "namespace=brand-voice"
+```
+
+- `version` is the opaque token from your last read of the file. Send it
+  back unchanged. It travels in the query string, so percent-encode it
+  like any query value: `@uri` does that above.
+- The update does not use `-G`: curl would move the body into the query.
+- The body of an update holds only what changes: `content`, `purpose`, or
+  both. A `null` is ignored, with a 200.
+- A stale `version` is a `409`. So is a create on a path that exists. A
+  read or a delete of a missing path is a `404`, and so is a second
+  delete. No `namespace` is a `400` `Missing namespace`.
 
 ## Other calls
 

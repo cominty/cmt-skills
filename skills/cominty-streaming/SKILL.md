@@ -96,10 +96,15 @@ another starts.
 **7. Read failure from the terminal message.** There is no error event. A
 failed run ends with a terminal message whose `status` is `"failed"`.
 Check `status`, then `error_code`: `"budget_exhausted"` means the
-workspace's budget ran out during the run.
+workspace's budget ran out.
 
 **8. Ignore event names you do not know.** The server can add event types
 at any time. Read `name`, handle the ones you know, pass over the rest.
+
+A reply that stops half way and asks whether to continue is not a reader
+bug. The agent reached its cap on tool rounds (`options.max_steps` on the
+request, or the server default). The stream ends as usual, with `status`
+`"success"`, and no event or field marks it.
 
 ## Resuming
 

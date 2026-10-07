@@ -31,6 +31,7 @@ Every address is a path on https://platform.cominty.ai.
 | `/agent-setup` | Set up with AI | Builds a briefing for a coding agent. It may open as a step of the Quickstart. |
 | `/api-keys` | API keys | Create and revoke keys. A key is shown once. |
 | `/chats` | Agent Sessions | The sessions made through the API. |
+| `/playground` | Playground | Its request settings include "Max steps" and "Memory namespace", and its Code tab shows the same call in TypeScript, Python and cURL. |
 | `/skills` | Skills | Skills uploaded for the workspace's agents. |
 | `/knowledge` | Documents | Sets of uploaded files that agents can search. |
 | `/integrations` | Integrations | Connect tools through MCP. |

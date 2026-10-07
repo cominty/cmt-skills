@@ -130,6 +130,11 @@ The last line of the stream. It has no `correlation_id`.
 
 The API can add fields. Ignore the ones you do not use.
 
+A run that stopped at its cap on tool rounds (`max_steps`) ends with
+`status: "success"` and `error_code: null`, like any other answer. No
+field or event marks it. Nothing here names the thread's memory namespace
+either.
+
 The Python SDK's `Message` model keeps only the fields it declares, so
 `error_code` is not on it. The TypeScript SDK keeps unlisted fields on the
 object, so `message.error_code` is readable there.

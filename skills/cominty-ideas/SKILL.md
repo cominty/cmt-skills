@@ -63,6 +63,8 @@ ideas from these and nothing else.
 | A custom agent | An agent with its own instructions and its own ordered list of models. To your code it is one more agent id. | The agent created first. How to create one is not on the public API reference, so check first. |
 | Built-in agents | `agent.chat` is general purpose. `agent.hive` orchestrates several agents for complex tasks. `agent.planner` plans multi-step work. | Nothing |
 | Files | A message can carry up to 5 uploaded files. A reply can carry files the agent produced. | The upload calls. They are not on the public API reference, so check them first. |
+| Memory across conversations | An agent can keep memory files in a namespace: a name your code chooses when it starts a thread. Threads started with the same name share the files. Your code can read and write them too. | A namespace on every thread. It is shared by the whole organization, so one memory per end user needs the user's id in the name. |
+| A cap on work per message | `max_steps` caps the tool rounds of one message. At the cap the agent stops, recaps and asks whether to continue. | A way for the person to answer "continue" |
 | History | Threads can be listed, searched, renamed, starred and archived. | Nothing |
 | Cost per run | A run's `result` event carries its token counts and its cost. | Nothing |
 
@@ -108,6 +110,10 @@ Shapes that often fit. Adapt them to the project. Do not paste them.
   instructions for that rewrite, with tools turned off. The Python SDK's
   own example turns a technical incident report into a short briefing for
   an executive.
+- **People come back to the product.** An assistant that keeps what it
+  learned about each person between conversations. The docs' own example
+  is a support bot with one memory namespace per user, holding a file on
+  the tone to write in.
 - **People research a topic inside the product.** A research action that
   uses web search and shows its progress while it works.
 

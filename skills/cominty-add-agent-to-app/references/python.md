@@ -10,6 +10,7 @@ Contents: [An async framework](#an-async-framework) ·
 [A sync framework](#a-sync-framework) ·
 [The three endings](#the-three-endings) · [Errors](#errors) ·
 [What the agent may use](#what-the-agent-may-use) ·
+[Capping tool rounds](#capping-tool-rounds) · [Memory](#memory) ·
 [Giving up on a run](#giving-up-on-a-run)
 
 ## An async framework
@@ -118,6 +119,8 @@ elif answer["questions"]:
     for question in answer["questions"]:
         print(question["prompt"], question["options"])
 else:
+    # An answer. It can be a recap that asks whether to continue, when the
+    # agent reached its cap on tool rounds. Show it like any other.
     print(answer["text"])
 ```
 
@@ -174,6 +177,119 @@ run = await cominty().chat.start(
 `disabled_tools` takes `"web"`, `"company_documents"`, `"mcp:<server>"`
 for one MCP server, or `"mcp:*"` for all of them. Leave an argument out to
 mean "everything the agent has". Do not pass an empty `source_ids`.
+
+## Capping tool rounds
+
+`max_steps` caps how many tool rounds the agent runs for one message. It
+needs `cominty-sdk` 0.5.0 or later: `pip show cominty-sdk` gives the
+installed version.
+
+```python
+first = await cominty().chat.start(agent_id=AGENT_ID, message=message, max_steps=5)
+reply = await first.result()
+# At the cap the agent stops, recaps and asks whether to continue.
+# reply.status is still "success": nothing marks the cap.
+
+# The cap is per message. Without it, this one runs with the server default.
+second = await cominty().chat.send(
+    first.thread.id,
+    agent_id=AGENT_ID,
+    message="Yes, continue.",
+    max_steps=5,
+)
+print(await second.text())
+```
+
+- An integer of 1 or more. There is no "unlimited" and no upper bound.
+  `None`, `0`, a negative number, a float, a bool or a string raises
+  `InvalidParams` before any request is sent.
+- Leave it out to let the server decide: 60 today, and it may change.
+- `None` does not mean "no cap". To pass an optional cap through your own
+  function, default it to the SDK's sentinel:
+
+  ```python
+  from cominty_sdk import SERVER_DEFAULT, MaxSteps
+
+  async def ask_agent(message: str, max_steps: MaxSteps = SERVER_DEFAULT) -> str:
+      run = await cominty().chat.start(agent_id=AGENT_ID, message=message, max_steps=max_steps)
+      return await run.text()
+  ```
+
+- Do not parse the reply to find out whether the cap was reached. No
+  field, event or error code says so, and the wording is the model's.
+- It is an order of magnitude: the agent can run `max_steps + 1` rounds,
+  one round can hold several tool calls, and each sub-agent counts its
+  own. It does not limit tokens, cost or time.
+- Do not set a very large cap on an expensive model. The budget is checked
+  once, when the agent starts, and the cost is deducted at the end.
+- The value is not stored and not returned. Keep it on your side.
+
+## Memory
+
+A thread has memory only when it starts with a namespace, or when its
+agent has one. Read [memory.md](memory.md) before you choose the name: a
+namespace is shared by the whole organization. Needs `cominty-sdk` 0.5.0
+or later.
+
+```python
+# Built on the server, from the user you authenticated. Never from the request.
+namespace = f"support-bot-{end_user_id}"
+
+run = await cominty().chat.start(
+    agent_id=AGENT_ID,
+    message=message,
+    memory_namespace=namespace,
+)
+
+# A follow-up takes no namespace: the thread keeps the one it started with.
+reply = await cominty().chat.send(run.thread.id, agent_id=AGENT_ID, message="And in French?")
+```
+
+`chat.send` has no `memory_namespace` argument: passing one is a
+`TypeError`. Nothing on `run.thread` or on a message echoes the namespace.
+
+The memory files:
+
+```python
+from cominty_sdk import ConflictError
+
+namespace = "brand-voice"
+
+await cominty().memory.create(
+    path="tone.md",
+    namespace=namespace,
+    purpose="writing style",  # why the file exists: the agent reads it
+    content="Keep it casual.",
+)
+
+summaries = await cominty().memory.list(namespace=namespace)  # no content
+names = await cominty().memory.list_namespaces()              # a list of str
+
+file = await cominty().memory.get("tone.md", namespace=namespace)
+try:
+    file = await cominty().memory.update(
+        "tone.md",
+        namespace=namespace,
+        version=file.version,  # from the last read, unchanged
+        content="Keep it upbeat.",
+    )
+except ConflictError:
+    # The file changed since you read it. Read it again, then redo the change.
+    file = await cominty().memory.get("tone.md", namespace=namespace)
+
+await cominty().memory.delete("tone.md", namespace=namespace)
+```
+
+`list()` with no argument returns every file in the organization.
+`update` changes only what you pass, `content` or `purpose`.
+
+| Raised | When |
+|---|---|
+| `InvalidParams` | Before any request: a namespace over 128 characters, a `path` more than one folder deep, an `update` with neither `content` nor `purpose`, or with one of them set to `None`. |
+| `ConflictError` | `create` on a path that exists in that namespace. `update` with a stale `version`. |
+| `NotFoundError` | `get` or `delete` of a path that is not in that namespace. A second `delete` raises it too. |
+| `APIError` with `status_code` 422 | A malformed `version`. |
+| `TypeError` | `namespace` left out of `create`, `get`, `update` or `delete`. |
 
 ## Giving up on a run
 

@@ -1,6 +1,6 @@
 ---
 name: cominty-add-agent-to-app
-description: "Put a Cominty agent into a project that already exists: find the stack, install the right SDK (TypeScript or Python) or use plain HTTP for a language with no SDK, keep the API key on the server, write the server-side call, and relay progress events to the browser when the UI has to show them. Use when someone says things like: add Cominty to my app, integrate the Cominty API into this project, use Cominty to add an assistant or a chat to my Next.js, Express, FastAPI or Django app, call my Cominty agent from my backend, wire the Cominty agent into this codebase, show the agent's progress in my UI."
+description: "Put a Cominty agent into a project that already exists: find the stack, install the right SDK (TypeScript or Python) or use plain HTTP for a language with no SDK, keep the API key on the server, write the server-side call, relay progress events to the browser when the UI has to show them, give the agent a memory that lasts between conversations (memory namespaces and memory files), and cap the work one message may trigger (max_steps). Use when someone says things like: add Cominty to my app, integrate the Cominty API into this project, use Cominty to add an assistant or a chat to my Next.js, Express, FastAPI or Django app, call my Cominty agent from my backend, wire the Cominty agent into this codebase, show the agent's progress in my UI, make my Cominty agent remember each user, give the agent memory, limit how many steps the agent takes."
 ---
 
 # Add a Cominty agent to an existing project
@@ -97,7 +97,10 @@ Handle the key like this:
    message is a string of at most 30,000 characters. Check the thread id,
    if there is one, belongs to the caller.
 4. **Handle the three endings.**
-   - An answer: `status` is `success` and there are no questions.
+   - An answer: `status` is `success` and there are no questions. It can
+     be a recap that asks whether to continue, when the agent reached its
+     cap on tool rounds. That is an answer too: show it, and let the
+     person reply in the same thread.
    - Questions: the agent needs more input. Show each `prompt` with its
      `options`. The reply to a question is the next message in the same
      thread.
@@ -110,6 +113,32 @@ Handle the key like this:
    [references/browser-relay.md](references/browser-relay.md). There is no
    token-by-token text: progress events stream, and the reply arrives
    whole.
+7. **Only if the task needs them,** set the two options a call can carry.
+
+   | Option | What it does | Worth it when |
+   |---|---|---|
+   | `max_steps` | Caps the tool rounds the agent runs for one message. Left out, the server default applies: 60 today. | One message must stay short or cheap, or a long task needs more room than the default. |
+   | A memory namespace | Attaches the thread to a named set of memory files. Threads started with the same name share them. | The agent has to know something in the next conversation: a user's preferences, a brand's tone. |
+
+   - Reaching the cap is not a failure. The agent stops, recaps and asks
+     whether to continue, and the message ends as `success` with nothing
+     to flag it. Do not parse the text to detect it. A follow-up in the
+     same thread continues the work.
+   - The cap is per message. Send it on every message that needs it.
+   - Do not set a very large cap on an expensive model. The budget is
+     checked once, when the agent starts, and the cost is deducted at the
+     end, so a long run can spend well past it before anything stops it.
+   - The namespace is set by the call that starts the thread, for the
+     thread's life. A follow-up cannot send one.
+   - With no namespace, and none on the agent, the thread has no memory
+     at all, and nothing says so.
+   - A namespace is shared by the whole organization, not private to one
+     user. For one memory per end user, put your user's id in the name,
+     on the server.
+
+   Python has both from `cominty-sdk` 0.5.0. The TypeScript SDK gets them
+   in the release after 0.1.0: check the installed version, and send
+   these two over plain HTTP until it has them.
 
 The code for each step is in the reference for the stack:
 
@@ -119,6 +148,7 @@ The code for each step is in the reference for the stack:
 | Python | [references/python.md](references/python.md) |
 | Any other language | [references/http.md](references/http.md) |
 | Progress in a browser | [references/browser-relay.md](references/browser-relay.md) |
+| Memory: the rules, and the memory files | [references/memory.md](references/memory.md) |
 
 Follow the project's own conventions for file names, error handling and
 tests. The references show the Cominty part. They do not decide the
@@ -141,6 +171,7 @@ Tell the developer, in a few lines:
 - The files you added or changed.
 - The environment variables they have to set, and where.
 - Which of the three endings the UI handles, and which it does not yet.
+- If the agent has memory: how the namespace is named, and who shares it.
 - Anything you assumed. The thread ownership check in rule 3 is the one to
   say out loud if you left it as a comment.
 
