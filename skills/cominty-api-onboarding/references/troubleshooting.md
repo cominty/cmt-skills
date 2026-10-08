@@ -9,8 +9,8 @@ Symptom first, because that is how a problem arrives. The
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `401` on every call | The key was sent as `Authorization: Bearer <key>` | The header is `x-cominty-token: <key>`. |
-| `401` with the right header | The key is missing, mistyped or revoked | Create a new one at `platform.cominty.ai/api-keys`. |
+| `403`, `detail` is `Invalid token` | The key was sent in `Authorization` | The header is `x-cominty-token: <key>`. |
+| `403` with the right header | The key is wrong or cut short (`detail` starts with `Invalid COMINTY_API_KEY`), or archived (`Unauthorized`) | Check the whole key is set: it starts with `sk-cmt-`. Or create a new one at `platform.cominty.ai/api-keys`. |
 | The key is lost | A key is shown once | Create a new one. The old one cannot be read back. |
 | The TypeScript SDK throws when constructed in a browser | By design: the key would be readable in devtools | Call the API from your own server. `dangerouslyAllowBrowser` is for trusted environments only. |
 | The SDK throws on a missing or malformed user id | It is checked locally, before any request | Copy it from the console's Quickstart page, or from the menu behind your avatar. It starts with `user_`. |

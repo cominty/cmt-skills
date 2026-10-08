@@ -47,7 +47,7 @@ install them for your user instead.
 | [`cominty-api-onboarding`](skills/cominty-api-onboarding/SKILL.md) | You have an account and want your code to get a first answer back: the key, the user id, the SDK, the first call, streaming, follow-ups. |
 | [`cominty-add-agent-to-app`](skills/cominty-add-agent-to-app/SKILL.md) | You want a Cominty agent inside a project that already exists, with the API key kept on the server. Also for giving that agent a memory, or a cap on its work per message. |
 | [`cominty-streaming`](skills/cominty-streaming/SKILL.md) | You are writing your own reader for the run stream, or debugging one. |
-| [`cominty-troubleshooting`](skills/cominty-troubleshooting/SKILL.md) | Something fails: a 401, a 429, a stream that never ends, no answer, an agent that stops half way or does not remember. |
+| [`cominty-troubleshooting`](skills/cominty-troubleshooting/SKILL.md) | Something fails: a 403, a 429, a stream that never ends, no answer, an agent that stops half way or does not remember. |
 | [`cominty-console`](skills/cominty-console/SKILL.md) | You need to know where something is in the developer console. |
 | [`cominty-ideas`](skills/cominty-ideas/SKILL.md) | You want to know what an agent could do in your project. |
 

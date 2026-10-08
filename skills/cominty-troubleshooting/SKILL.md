@@ -1,6 +1,6 @@
 ---
 name: cominty-troubleshooting
-description: "Symptom to cause to fix for the Cominty agent API and its SDKs: a 401 (a bearer token instead of the x-cominty-token header), the kinds of 429, a stream that never ends or stops early, questions coming back instead of an answer, a run that failed, costs as decimal strings, a client constructed in a browser, a missing or malformed user id, an agent that stops half way and asks whether to continue (max_steps), an agent that remembers nothing or memory that seems gone (memory namespaces), errors from the memory file calls. Use when someone says things like: my Cominty call returns 401 or 429, unauthorized, rate limited, the stream hangs, I get no answer, the reply is empty, the agent asked me a question back, the SDK throws when I create the client, invalid userId, the costs do not add up, it works with curl but not in my app, the agent stopped half way, it asks if it should continue, the agent does not remember anything, my old memory is gone, Missing namespace, 409 on a memory file."
+description: "Symptom to cause to fix for the Cominty agent API and its SDKs: a 403 (the key refused: sent in Authorization instead of the x-cominty-token header, wrong, or archived), the kinds of 429, a stream that never ends or stops early, questions coming back instead of an answer, a run that failed, costs as decimal strings, a client constructed in a browser, a missing or malformed user id, an agent that stops half way and asks whether to continue (max_steps), an agent that remembers nothing or memory that seems gone (memory namespaces), errors from the memory file calls. Use when someone says things like: my Cominty call returns 403, 401 or 429, unauthorized, rate limited, the stream hangs, I get no answer, the reply is empty, the agent asked me a question back, the SDK throws when I create the client, invalid userId, the costs do not add up, it works with curl but not in my app, the agent stopped half way, it asks if it should continue, the agent does not remember anything, my old memory is gone, Missing namespace, 409 on a memory file."
 ---
 
 # Troubleshooting the Cominty API
@@ -14,13 +14,16 @@ Start from the symptom. Before you suggest a fix, get the evidence:
 Never ask for the API key. To check how it is sent, ask for the name of
 the header, not its value.
 
-## 401 and 403
+## 403: the key was refused
+
+A key the API will not take comes back as `403` (`PermissionError` in the SDKs), not `401`.
+The `detail` of the answer says which case it is.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `401` on every call | The key is sent as `Authorization: Bearer <key>` | Send it as `x-cominty-token: <key>`. A bearer token gets a 401. Look for an HTTP client's bearer helper, or an API tool's auth tab, adding the wrong header. |
-| `401` with the right header (`AuthError`) | The key is missing, mistyped or revoked | Check the variable is set in the process that makes the call. If in doubt, create a new key on the console's `/api-keys` page. A key is shown once: an old one cannot be read back. |
-| `403` (`PermissionError`) | The key is valid but may not access this resource | Check the thread, message or agent id is the one you meant. |
+| `403`, `detail` is `Invalid token` | The key is sent in `Authorization`, which is not the key's header | Send the same value as `x-cominty-token: <key>`. Look for an HTTP client's bearer helper, or an API tool's auth tab, adding the wrong header. |
+| `403`, `detail` starts with `Invalid COMINTY_API_KEY` | The secret is wrong: empty, cut short, changed, or a key from somewhere else | Check the variable is set in the process that makes the call, and holds the whole key: a Cominty key starts with `sk-cmt-`. If in doubt, create a new key on the console's `/api-keys` page. A key is shown once: an old one cannot be read back. |
+| `403`, `detail` is `Unauthorized` | The key was archived | Create a new key. Retrying the same one does not help. |
 
 ## The client will not construct
 

@@ -59,7 +59,7 @@ export async function readRun(
         throw new ConnectionDropped('could not connect', { cause })
     })
     if (!response.ok || !response.body) {
-        // Not a dropped connection: 401, 404, 429, 5xx. This reader does
+        // Not a dropped connection: 403, 404, 429, 5xx. This reader does
         // not retry them. Decide per status.
         throw new Error(`stream request failed: HTTP ${response.status}`)
     }
@@ -197,7 +197,7 @@ def read_run(message_id: str, on_event: Callable[[dict], None], state: dict | No
     timeout = httpx.Timeout(30.0, read=None)
 
     with httpx.stream("GET", url, headers=headers, timeout=timeout) as response:
-        # Not a dropped connection: 401, 404, 429, 5xx. This reader does not
+        # Not a dropped connection: 403, 404, 429, 5xx. This reader does not
         # retry them. Decide per status.
         response.raise_for_status()
         # iter_lines() also yields a last line that has no trailing newline.

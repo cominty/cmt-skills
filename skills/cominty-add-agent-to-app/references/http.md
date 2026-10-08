@@ -10,7 +10,7 @@ A message takes two requests: one starts the run, one reads its stream.
 | Thing | Value |
 |---|---|
 | Base URL | `https://ds.cominty.com` |
-| Header | `x-cominty-token: <the API key>`. Not `Authorization: Bearer`: that gets a 401. |
+| Header | `x-cominty-token: <the API key>`. Not `Authorization: Bearer`: that gets a 403. |
 | User id | In the body, as `options.user_id`, for chat calls. As the `user_id` query parameter for `GET /chat`. |
 
 Read the key, the user id and the agent id from the server's
@@ -139,8 +139,7 @@ An error response is JSON with a `detail` field.
 | Status | Meaning | What to do |
 |---|---|---|
 | `400` | A bad request. A missing `user_id` is one cause: it is required with an API key. On a memory file call, a missing `namespace`. | Send `options.user_id`, or the `namespace` |
-| `401` | The key is missing, mistyped or revoked, or it was sent as a bearer token | Send it in `x-cominty-token` |
-| `403` | The key is valid but may not access this resource | Check the id |
+| `403` | The key was refused. `detail` says why: `Invalid token` (sent in `Authorization`), starts with `Invalid COMINTY_API_KEY` (wrong or cut short), `Unauthorized` (archived) | Send the whole key in `x-cominty-token`, or create a new one |
 | `404` | Wrong thread, message or agent id. Or a memory file that is not at that path in that namespace. | Check the id |
 | `409` | The request conflicts with the resource's current state. On a memory file: the path exists already, or the `version` is stale. | Read `detail` |
 | `422` | The body failed validation. `detail` is a list that names each field. | Fix the body |

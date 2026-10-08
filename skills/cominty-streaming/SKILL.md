@@ -24,7 +24,7 @@ Last-Event-Id: <event id>        only when resuming
 ```
 
 The base URL is `https://ds.cominty.com`. The key goes in
-`x-cominty-token`. An `Authorization: Bearer` header gets a 401.
+`x-cominty-token`. Sent in an `Authorization` header instead, it gets a 403.
 
 Where the message id comes from:
 

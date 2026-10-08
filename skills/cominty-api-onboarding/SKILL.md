@@ -19,7 +19,7 @@ asks. The stream contract is in
 
 | The wrong guess | What is true |
 |---|---|
-| `Authorization: Bearer <key>` | The header is `x-cominty-token: <key>`. A bearer token gets a 401. |
+| `Authorization: Bearer <key>` | The header is `x-cominty-token: <key>`. A key sent in `Authorization` gets a 403. |
 | The stream is SSE | It is JSON Lines (`application/jsonl`): one JSON value per line. No `event:` or `data:` framing, no `[DONE]`. |
 | The `result` event ends the stream | It does not. More events can follow it. The stream ends on the terminal message: the line with no `correlation_id`. |
 | Text arrives token by token | There is no text-delta event. Progress events stream. The reply arrives whole. |
